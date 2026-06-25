@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Calendar, MapPin, Search, ArrowRight, X, Wallet, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, useBalance } from 'wagmi';
 import { parseEther, formatUnits, parseUnits, getAddress } from 'viem';
@@ -339,20 +340,79 @@ export default function Home() {
   const isPendingState = isTxPending || isTxConfirming || isSimulatingTx || simulatedConfirming;
 
   return (
-    <div className="flex-1 w-full max-w-6xl mx-auto px-6 py-12 md:py-24 flex flex-col gap-16 animate-in fade-in duration-300">
-      
-      {/* Hero Section - Modern Minimalist */}
-      <section className="flex flex-col gap-4 text-left max-w-2xl">
-        <h1 className="text-5xl sm:text-6xl font-black tracking-tight text-white leading-none">
-          LailTix.
-        </h1>
-        <p className="text-zinc-500 text-base sm:text-lg font-light leading-relaxed">
-          Decentralized event ticket passes on Ethereum Sepolia. No scalpers, zero friction, immediate ownership proof.
-        </p>
+    <div className="relative flex-1 w-full max-w-6xl mx-auto px-6 py-12 md:py-24 flex flex-col gap-16 animate-in fade-in duration-300">
+      {/* Decorative Blur Backgrounds */}
+      <div className="absolute top-[-10%] left-[-10%] w-[35%] h-[35%] bg-violet-600/15 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-[5%] right-[-5%] w-[30%] h-[30%] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
+
+      {/* Hero Section */}
+      <section className="relative flex flex-col lg:flex-row items-center justify-between gap-10 pt-4 md:pt-8 pb-4">
+        <div className="flex flex-col gap-6 text-left max-w-2xl flex-1">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-950/10 text-violet-300 w-fit">
+            <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-ping" />
+            <span className="text-[10px] font-bold uppercase tracking-widest font-mono">Next-Gen Ticketing Protocol</span>
+          </div>
+
+          {/* Heading */}
+          <h1 className="text-5xl sm:text-7xl font-black tracking-tight text-white leading-[0.9] uppercase">
+            The Future of <br />
+            <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-indigo-400 bg-clip-text text-transparent">
+              Event Passes
+            </span>
+          </h1>
+
+          {/* Description */}
+          <p className="text-zinc-400 text-sm sm:text-base font-light leading-relaxed max-w-xl">
+            Experience secure, transparent, and seamless ticketing powered by NFT smart contracts. No middleman, zero scalping, instant verification and true ownership.
+          </p>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => {
+                document.getElementById('events-marketplace')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="px-6 py-3 rounded-xl bg-white text-black hover:bg-transparent hover:text-white border border-white text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-white/5 active:scale-95"
+            >
+              Get Tickets
+            </button>
+            <Link
+              href="/admin"
+              className="px-6 py-3 rounded-xl border border-zinc-800 hover:border-zinc-500 text-zinc-300 hover:text-white text-xs font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95"
+            >
+              Organize Event
+            </Link>
+          </div>
+        </div>
+
+        {/* Hero Interactive Card Mockup */}
+        <div className="hidden lg:flex flex-col gap-4 w-[320px] bg-zinc-950/40 border border-white/5 rounded-3xl p-5 relative overflow-hidden backdrop-blur-xl shadow-2xl">
+          <div className="absolute inset-0 bg-gradient-to-b from-violet-600/5 to-transparent pointer-events-none" />
+          <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-zinc-900 border border-white/5 relative">
+            <img 
+              src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=400" 
+              alt="LailTix Event" 
+              className="w-full h-full object-cover"
+            />
+            <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full text-[8px] font-bold bg-black/60 backdrop-blur-sm text-violet-300 tracking-widest font-mono uppercase">
+              Featured Pass
+            </span>
+          </div>
+          <div className="flex flex-col gap-1 text-left">
+            <h3 className="text-sm font-black text-white uppercase tracking-tight truncate">EtherSummit 2026</h3>
+            <span className="text-[9px] text-zinc-500 font-mono">Metropolis Center, Denver</span>
+          </div>
+          <div className="h-[1px] bg-zinc-900 w-full" />
+          <div className="flex justify-between items-center text-[10px] font-mono text-zinc-400">
+            <span>Verified Smart Contract</span>
+            <span className="text-violet-400">Active ✓</span>
+          </div>
+        </div>
       </section>
 
       {/* Control Panel */}
-      <section className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center border-b border-zinc-900 pb-6">
+      <section id="events-marketplace" className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center border-b border-zinc-900 pb-6 scroll-mt-20">
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
           <input
