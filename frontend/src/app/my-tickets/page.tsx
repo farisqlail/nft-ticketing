@@ -22,6 +22,7 @@ export default function MyTicketsPage() {
   const [tickets, setTickets] = useState<TicketItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<TicketItem | null>(null);
 
   const loadTickets = async () => {
     if (!userAddress) return;
@@ -174,7 +175,8 @@ export default function MyTicketsPage() {
             return (
               <div 
                 key={ticket.tokenId + '-' + index}
-                className="relative w-full rounded-3xl glass bg-zinc-950/40 border-white/5 flex flex-col md:flex-row hover:border-white/10 hover:shadow-lg hover:shadow-violet-600/[0.02] transition-all duration-300 overflow-hidden"
+                className="relative w-full rounded-3xl glass bg-zinc-950/40 border-white/5 flex flex-col md:flex-row hover:border-white/10 hover:shadow-lg hover:shadow-violet-600/[0.02] transition-all duration-300 overflow-hidden cursor-pointer active:scale-[0.99]"
+                onClick={() => setSelectedTicket(ticket)}
               >
                 {/* Visual Glow */}
                 <div className="absolute top-0 right-0 w-24 h-24 bg-violet-600/5 rounded-full blur-2xl pointer-events-none" />
@@ -254,6 +256,7 @@ export default function MyTicketsPage() {
                           : `https://sepolia.etherscan.io/tx/${ticket.transactionHash}`}
                         target="_blank"
                         rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
                         className="inline-flex items-center gap-1 text-[10px] text-violet-400 hover:text-white mt-1.5 transition-colors underline"
                       >
                         Verify TX <ArrowUpRight className="h-3 w-3" />
@@ -272,6 +275,119 @@ export default function MyTicketsPage() {
           <p className="text-zinc-500 text-xs max-w-xs leading-relaxed">
             Go to the Explore page, choose an event, and buy a ticket using ETH or LINK.
           </p>
+        </div>
+      )}
+
+      {/* Modal */}
+      {selectedTicket && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setSelectedTicket(null)}
+        >
+          <div 
+            className="relative w-full max-w-[340px] flex flex-col items-center animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button 
+              className="absolute -top-12 right-2 text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10"
+              onClick={() => setSelectedTicket(null)}
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Ticket Card Container */}
+            <div className="relative w-full bg-white text-zinc-950 rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden border border-zinc-200">
+              
+              {/* Top Section */}
+              <div className="p-6 pb-4 flex flex-col gap-4">
+                {/* Header info */}
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black bg-zinc-950 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
+                    {selectedTicket.eventDetails?.category || 'Pass'}
+                  </span>
+                  <span className="text-[10px] font-bold text-zinc-400 font-mono">
+                    #{selectedTicket.tokenId}
+                  </span>
+                </div>
+
+                {/* Event Image */}
+                {selectedTicket.eventDetails?.imageUrl ? (
+                  <div className="w-full aspect-[2/1] rounded-2xl overflow-hidden bg-zinc-100 border border-zinc-200">
+                    <img 
+                      src={selectedTicket.eventDetails.imageUrl} 
+                      alt={selectedTicket.eventDetails.title} 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full aspect-[2/1] rounded-2xl overflow-hidden bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-300">
+                    <Ticket className="h-10 w-10" />
+                  </div>
+                )}
+
+                {/* Title */}
+                <div className="flex flex-col gap-0.5">
+                  <h4 className="text-lg font-black leading-tight text-zinc-900 uppercase tracking-tight">
+                    {selectedTicket.eventDetails?.title || 'Unknown Event'}
+                  </h4>
+                  <p className="text-[10px] text-zinc-400 font-mono tracking-wider uppercase font-semibold">
+                    LailTix Verified NFT Pass
+                  </p>
+                </div>
+
+                {/* Details Grid */}
+                <div className="grid grid-cols-2 gap-4 pt-3 border-t border-zinc-100">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[8px] uppercase tracking-widest text-zinc-400 font-extrabold leading-none">Date</span>
+                    <span className="text-[11px] font-bold text-zinc-800">{selectedTicket.eventDetails?.date || 'N/A'}</span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[8px] uppercase tracking-widest text-zinc-400 font-extrabold leading-none">Venue</span>
+                    <span className="text-[11px] font-bold text-zinc-800 truncate block">{selectedTicket.eventDetails?.venue || 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Perforated Separator with Side Cutouts */}
+              <div className="relative h-6 flex items-center justify-center my-0.5">
+                {/* Left Cutout - matches backdrop color bg-black */}
+                <div className="absolute left-[-12px] w-6 h-6 rounded-full bg-black border border-black z-10 shadow-[inset_-3px_0_4px_rgba(0,0,0,0.05)]" />
+                
+                {/* Dashed Line */}
+                <div className="w-full border-t-2 border-dashed border-zinc-200 mx-4" />
+                
+                {/* Right Cutout - matches backdrop color bg-black */}
+                <div className="absolute right-[-12px] w-6 h-6 rounded-full bg-black border border-black z-10 shadow-[inset_3px_0_4px_rgba(0,0,0,0.05)]" />
+              </div>
+
+              {/* Bottom Section */}
+              <div className="p-6 pt-2 flex flex-col items-center gap-4 text-center">
+                {/* QR Code */}
+                <div className="p-3 bg-zinc-50 rounded-2xl border border-zinc-100 shadow-inner">
+                  <QrCode className="h-28 w-28 text-zinc-900" />
+                </div>
+                
+                {/* Barcode representation */}
+                <div className="flex flex-col items-center gap-2 w-full">
+                  <div className="w-full h-8 flex justify-between overflow-hidden opacity-90 px-2">
+                    {[1, 3, 1, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 2, 1, 4, 1, 2, 3, 1, 2, 4, 1, 3].map((width, i) => (
+                      <div 
+                        key={i} 
+                        className="h-full bg-zinc-950" 
+                        style={{ width: `${width}px` }} 
+                      />
+                    ))}
+                  </div>
+                  <span className="text-[10px] font-mono font-bold tracking-widest text-zinc-500">
+                    VTX-{selectedTicket.tokenId}-PASS
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
