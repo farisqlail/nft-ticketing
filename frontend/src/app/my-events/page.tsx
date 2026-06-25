@@ -73,10 +73,12 @@ export default function AdminDashboardPage() {
   }, [userAddress, contractOwner]);
 
   const loadEvents = async () => {
-    if (!userAddress) return;
     setIsLoading(true);
     try {
-      const orgEvents = await getEventsByOrganizer(userAddress);
+      let orgEvents: EventItem[] = [];
+      if (userAddress) {
+        orgEvents = await getEventsByOrganizer(userAddress);
+      }
       
       // Also fetch default static mock events which don't have an organizer
       const allEvents = await getEvents();
@@ -98,7 +100,7 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    if (isAdmin && userAddress) {
+    if (isAdmin) {
       loadEvents();
     } else {
       setIsLoading(false);
