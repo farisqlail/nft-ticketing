@@ -226,7 +226,7 @@ export default function MyTicketsPage() {
                       <MapPin className="h-4 w-4 text-violet-400/80 shrink-0" />
                       <div>
                         <span className="text-[9px] text-zinc-500 block uppercase font-semibold leading-none mb-0.5">Venue Location</span>
-                        <span className="text-white text-[11px] leading-none line-clamp-1">{event?.venue || 'N/A'}</span>
+                        <span className="text-white text-[11px] leading-none whitespace-nowrap truncate block max-w-[150px]">{event?.venue || 'N/A'}</span>
                       </div>
                     </div>
                   </div>
@@ -346,7 +346,7 @@ export default function MyTicketsPage() {
                   </div>
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[8px] uppercase tracking-widest text-zinc-400 font-extrabold leading-none">Venue</span>
-                    <span className="text-[11px] font-bold text-zinc-800 truncate block">{selectedTicket.eventDetails?.venue || 'N/A'}</span>
+                    <span className="text-[11px] font-bold text-zinc-800 whitespace-nowrap truncate block max-w-[120px]">{selectedTicket.eventDetails?.venue || 'N/A'}</span>
                   </div>
                 </div>
               </div>
