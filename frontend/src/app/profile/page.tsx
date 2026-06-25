@@ -62,7 +62,7 @@ export default function ProfilePage() {
     if (!userAddress) return;
 
     // 1. Load Profile
-    const localProfileKey = `velotix_profile_${userAddress.toLowerCase()}`;
+    const localProfileKey = `lailtix_profile_${userAddress.toLowerCase()}`;
     const savedProfile = localStorage.getItem(localProfileKey);
     if (savedProfile) {
       try {
@@ -87,7 +87,7 @@ export default function ProfilePage() {
 
       // Tickets purchased count (combining local storage count + chain log mock)
       let ticketsCountLocal = 0;
-      const cachedPurchases = localStorage.getItem(`velotix_local_purchases_${userAddress.toLowerCase()}`);
+      const cachedPurchases = localStorage.getItem(`lailtix_local_purchases_${userAddress.toLowerCase()}`);
       if (cachedPurchases) {
         try {
           ticketsCountLocal = JSON.parse(cachedPurchases).length;
@@ -131,7 +131,7 @@ export default function ProfilePage() {
     e.preventDefault();
     if (!userAddress) return;
 
-    const localProfileKey = `velotix_profile_${userAddress.toLowerCase()}`;
+    const localProfileKey = `lailtix_profile_${userAddress.toLowerCase()}`;
     localStorage.setItem(localProfileKey, JSON.stringify(profile));
     
     setProfileSaved(true);

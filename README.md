@@ -1,4 +1,4 @@
-# VeloTix - Hybrid Web3 Event Ticketing dApp
+# LailTix - Hybrid Web3 Event Ticketing dApp
 
 A next-generation hybrid Web3 event ticketing platform built using Next.js (App Router), Tailwind CSS, Shadcn/ui, Wagmi/Viem, and Hardhat smart contracts on Ethereum Sepolia.
 

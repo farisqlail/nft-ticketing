@@ -75,7 +75,7 @@ export const MOCK_EVENTS: EventItem[] = [
   }
 ];
 
-const LOCAL_STORAGE_KEY = 'velotix_custom_events';
+const LOCAL_STORAGE_KEY = 'lailtix_custom_events';
 
 // Check if Supabase is properly configured with real credentials
 const isSupabaseConfigured = (): boolean => {

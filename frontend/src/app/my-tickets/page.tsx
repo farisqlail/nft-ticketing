@@ -92,7 +92,7 @@ export default function MyTicketsPage() {
 
       // 3. Fallback: Check local storage for mock purchases
       if (ticketsList.length === 0 && typeof window !== 'undefined') {
-        const cached = localStorage.getItem(`velotix_local_purchases_${userAddress.toLowerCase()}`);
+        const cached = localStorage.getItem(`lailtix_local_purchases_${userAddress.toLowerCase()}`);
         if (cached) {
           try {
             const localPurchases = JSON.parse(cached);
@@ -100,7 +100,7 @@ export default function MyTicketsPage() {
               const event = allEvents.find((e) => e.id === String(p.eventId));
               ticketsList.push({
                 tokenId: p.tokenId || 'MOCK-' + Math.floor(Math.random() * 1000),
-                tokenURI: `https://api.velotix.io/metadata/${p.eventId}`,
+                tokenURI: `https://api.lailtix.io/metadata/${p.eventId}`,
                 paymentMethod: p.paymentMethod || 'ETH',
                 transactionHash: p.txHash || 'local-simulation-hash',
                 eventDetails: event,

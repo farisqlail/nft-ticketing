@@ -27,7 +27,7 @@ describe("TicketNFT Multi-Token Purchase Test", function () {
   });
 
   it("Should allow buying ticket with ETH", async function () {
-    const uri = "https://api.velotix.io/metadata/1";
+    const uri = "https://api.lailtix.io/metadata/1";
     
     // Buyer purchases ticket with ETH
     await expect(
@@ -41,7 +41,7 @@ describe("TicketNFT Multi-Token Purchase Test", function () {
   });
 
   it("Should allow buying ticket with LINK token", async function () {
-    const uri = "https://api.velotix.io/metadata/2";
+    const uri = "https://api.lailtix.io/metadata/2";
     
     // 1. Approve TicketNFT contract to spend buyer's LINK tokens
     await mockToken.connect(buyer).approve(await ticketNFT.getAddress(), ticketPriceLink);
@@ -62,7 +62,7 @@ describe("TicketNFT Multi-Token Purchase Test", function () {
   });
 
   it("Should revert if buyer has insufficient LINK balance", async function () {
-    const uri = "https://api.velotix.io/metadata/3";
+    const uri = "https://api.lailtix.io/metadata/3";
     const brokeBuyer = (await ethers.getSigners())[2]; // Has 0 mock LINK
 
     await mockToken.connect(brokeBuyer).approve(await ticketNFT.getAddress(), ticketPriceLink);
@@ -73,7 +73,7 @@ describe("TicketNFT Multi-Token Purchase Test", function () {
   });
 
   it("Should revert if buyer has not approved enough allowance", async function () {
-    const uri = "https://api.velotix.io/metadata/4";
+    const uri = "https://api.lailtix.io/metadata/4";
     
     // Approve less than required price
     await mockToken.connect(buyer).approve(await ticketNFT.getAddress(), ethers.parseEther("2"));

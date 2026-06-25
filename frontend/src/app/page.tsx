@@ -114,7 +114,7 @@ export default function Home() {
         loadAllEvents();
       });
 
-      const localKey = `velotix_local_purchases_${userAddress.toLowerCase()}`;
+      const localKey = `lailtix_local_purchases_${userAddress.toLowerCase()}`;
       const cached = localStorage.getItem(localKey);
       let list: any[] = [];
       if (cached) {
@@ -148,7 +148,7 @@ export default function Home() {
     resetTx();
 
     try {
-      const uri = `https://api.velotix.io/metadata/${selectedEvent.id}`;
+      const uri = `https://api.lailtix.io/metadata/${selectedEvent.id}`;
 
       if (paymentMethod === 'ETH') {
         // Send ETH transaction

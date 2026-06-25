@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VeloTix - Web3 Event Ticketing dApp",
+  title: "LailTix - Web3 Event Ticketing dApp",
   description: "Secure, transparent, and seamless decentralized event ticketing platform.",
 };
 
