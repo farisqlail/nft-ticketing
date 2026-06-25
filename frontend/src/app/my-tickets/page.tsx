@@ -288,23 +288,23 @@ export default function MyTicketsPage() {
             className="relative w-full max-w-[340px] flex flex-col items-center animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Button */}
-            <button 
-              className="absolute -top-12 right-2 text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10"
-              onClick={() => setSelectedTicket(null)}
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
             {/* Ticket Card Container */}
-            <div className="relative w-full bg-white text-zinc-950 rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden border border-zinc-200">
+            <div className="relative w-full bg-white text-zinc-950 rounded-[2.5rem] shadow-2xl flex flex-col border border-zinc-200">
               
+              {/* Close Button inside Card */}
+              <button 
+                className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-900 transition-colors p-1.5 rounded-full hover:bg-zinc-100 z-20"
+                onClick={() => setSelectedTicket(null)}
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
               {/* Top Section */}
               <div className="p-6 pb-4 flex flex-col gap-4">
                 {/* Header info */}
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center pr-8">
                   <span className="text-[10px] font-black bg-zinc-950 text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
                     {selectedTicket.eventDetails?.category || 'Pass'}
                   </span>
@@ -354,13 +354,13 @@ export default function MyTicketsPage() {
               {/* Perforated Separator with Side Cutouts */}
               <div className="relative h-6 flex items-center justify-center my-0.5">
                 {/* Left Cutout - matches backdrop color bg-black */}
-                <div className="absolute left-[-12px] w-6 h-6 rounded-full bg-black border border-black z-10 shadow-[inset_-3px_0_4px_rgba(0,0,0,0.05)]" />
+                <div className="absolute left-[-12px] w-6 h-6 rounded-full bg-black z-10" />
                 
                 {/* Dashed Line */}
                 <div className="w-full border-t-2 border-dashed border-zinc-200 mx-4" />
                 
                 {/* Right Cutout - matches backdrop color bg-black */}
-                <div className="absolute right-[-12px] w-6 h-6 rounded-full bg-black border border-black z-10 shadow-[inset_3px_0_4px_rgba(0,0,0,0.05)]" />
+                <div className="absolute right-[-12px] w-6 h-6 rounded-full bg-black z-10" />
               </div>
 
               {/* Bottom Section */}
