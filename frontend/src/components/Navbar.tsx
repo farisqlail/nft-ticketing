@@ -57,15 +57,17 @@ export function Navbar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-2">
-            <Ticket className="h-6 w-6 text-violet-400 animate-pulse" />
-            <span className="font-bold text-white text-lg tracking-wider bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
-              LailTix
-            </span>
+          <div className="flex-1 flex items-center justify-start">
+            <div className="flex items-center gap-2">
+              <Ticket className="h-6 w-6 text-violet-400 animate-pulse" />
+              <span className="font-bold text-white text-lg tracking-wider bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
+                LailTix
+              </span>
+            </div>
           </div>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center justify-center gap-6">
             {navLinks.map((link) => {
               const Icon = link.icon;
               return (
@@ -82,7 +84,7 @@ export function Navbar() {
           </nav>
 
           {/* Connect Button & Mobile Toggle */}
-          <div className="flex items-center gap-3">
+          <div className="flex-1 flex items-center justify-end gap-3">
             {/* RainbowKit Connect Button with customized styling wrapper */}
             <div className="scale-90 sm:scale-100 origin-right">
               <ConnectButton showBalance={false} />
