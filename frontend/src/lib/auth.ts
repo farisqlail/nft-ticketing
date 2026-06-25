@@ -36,13 +36,17 @@ export const isAddressAdmin = (
   userAddress?: string,
   contractOwnerAddress?: string
 ): boolean => {
+  // 1. Check if user is logged in via passcode session
+  if (isAdminSessionActive()) {
+    return true;
+  }
+
   if (!userAddress) return false;
   
-  // 1. If contract owner matches connected address, it's admin automatically
+  // 2. If contract owner matches connected address, it's admin automatically
   if (contractOwnerAddress && userAddress.toLowerCase() === contractOwnerAddress.toLowerCase()) {
     return true;
   }
 
-  // 2. Check if user is logged in via passcode session
-  return isAdminSessionActive();
+  return false;
 };
