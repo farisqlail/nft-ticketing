@@ -141,6 +141,30 @@ export const getEvents = async (): Promise<EventItem[]> => {
     }
   });
 
+  // Dynamically calculate actual sold tickets from local purchases across all wallets
+  if (typeof window !== 'undefined') {
+    allEvents.forEach((event) => {
+      let actualCount = 0;
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('lailtix_local_purchases_')) {
+            const cached = localStorage.getItem(key);
+            if (cached) {
+              const purchases = JSON.parse(cached);
+              if (Array.isArray(purchases)) {
+                actualCount += purchases.filter((p: any) => String(p.eventId) === String(event.id)).length;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+      event.soldTickets = actualCount;
+    });
+  }
+
   return allEvents;
 };
 
