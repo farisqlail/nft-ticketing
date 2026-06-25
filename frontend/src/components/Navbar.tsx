@@ -1,18 +1,55 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Menu, X, Ticket, Calendar, User, Compass } from 'lucide-react';
+import { Menu, X, Ticket, Calendar, User, Compass, ShieldAlert } from 'lucide-react';
+import { useAccount, useReadContract } from 'wagmi';
+import { TICKET_NFT_ABI } from '@/lib/abi';
+
+const DEFAULT_CONTRACT_ADDRESS = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const { address: userAddress, isConnected } = useAccount();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [contractAddress, setContractAddress] = useState(DEFAULT_CONTRACT_ADDRESS);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('velo_contract_address');
+      if (saved) setContractAddress(saved);
+    }
+  }, []);
+
+  const { data: contractOwner } = useReadContract({
+    address: contractAddress as `0x${string}`,
+    abi: TICKET_NFT_ABI,
+    functionName: 'owner',
+  });
+
+  const checkAdminStatus = () => {
+    const isSessionActive = typeof window !== 'undefined' && localStorage.getItem('lailtix_admin_session') === 'true';
+    const isWalletOwner = 
+      isConnected && 
+      userAddress && 
+      contractOwner && 
+      userAddress.toLowerCase() === (contractOwner as string).toLowerCase();
+    
+    setIsAdmin(Boolean(isSessionActive || isWalletOwner));
+  };
+
+  useEffect(() => {
+    checkAdminStatus();
+    const interval = setInterval(checkAdminStatus, 1500);
+    return () => clearInterval(interval);
+  }, [userAddress, isConnected, contractOwner]);
 
   const navLinks = [
     { href: '/', label: 'Explore', icon: Compass },
-    { href: '/my-events', label: 'My Events', icon: Calendar },
     { href: '/my-tickets', label: 'My Tickets', icon: Ticket },
     { href: '/profile', label: 'Profile', icon: User },
+    ...(isAdmin ? [{ href: '/my-events', label: 'Admin Panel', icon: ShieldAlert }] : []),
   ];
 
   return (

@@ -1,18 +1,34 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Plus, X, Award, Users, DollarSign, Loader2, Compass, AlertCircle } from 'lucide-react';
-import { useAccount } from 'wagmi';
+import { Calendar, MapPin, Plus, X, Award, Users, DollarSign, Loader2, Compass, AlertCircle, ShieldCheck, Key, Settings, RefreshCw } from 'lucide-react';
+import { useAccount, useReadContract } from 'wagmi';
+import { getAddress } from 'viem';
+import { TICKET_NFT_ABI } from '@/lib/abi';
 import { getEventsByOrganizer, createEvent, type EventItem } from '@/lib/events';
+import { loginWithPasscode, logoutAdmin, isAddressAdmin } from '@/lib/auth';
 
-export default function MyEventsPage() {
+const DEFAULT_CONTRACT_ADDRESS = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
+
+export default function AdminDashboardPage() {
   const { address: userAddress, isConnected } = useAccount();
+  
+  // Auth state
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [passcode, setPasscode] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  
+  // Contract configuration state
+  const [contractAddress, setContractAddress] = useState(DEFAULT_CONTRACT_ADDRESS);
+  const [showConfig, setShowConfig] = useState(false);
+  const [isContractAddressInvalid, setIsContractAddressInvalid] = useState(false);
+
+  // Events/Form State
   const [events, setEvents] = useState<EventItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form State
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -28,6 +44,34 @@ export default function MyEventsPage() {
 
   const categories = ['Conference', 'Music', 'Art', 'Hackathon', 'Other'];
 
+  // Load configured contract address
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('velo_contract_address');
+      if (saved) setContractAddress(saved);
+    }
+  }, []);
+
+  // Fetch contract owner
+  const { data: contractOwner } = useReadContract({
+    address: contractAddress as `0x${string}`,
+    abi: TICKET_NFT_ABI,
+    functionName: 'owner',
+  });
+
+  // Verify and update Admin state
+  const checkAdminAuth = () => {
+    const isOwner = isAddressAdmin(userAddress, contractOwner as string);
+    setIsAdmin(isOwner);
+  };
+
+  useEffect(() => {
+    checkAdminAuth();
+    // Poll to keep in sync in case session key is cleared/added
+    const interval = setInterval(checkAdminAuth, 1000);
+    return () => clearInterval(interval);
+  }, [userAddress, contractOwner]);
+
   const loadEvents = async () => {
     if (!userAddress) return;
     setIsLoading(true);
@@ -42,12 +86,51 @@ export default function MyEventsPage() {
   };
 
   useEffect(() => {
-    if (isConnected && userAddress) {
+    if (isAdmin && userAddress) {
       loadEvents();
     } else {
       setIsLoading(false);
     }
-  }, [isConnected, userAddress]);
+  }, [isAdmin, userAddress]);
+
+  // Login handler
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+    
+    const success = loginWithPasscode(passcode);
+    if (success) {
+      setIsAdmin(true);
+      setPasscode('');
+    } else {
+      setLoginError('Invalid passcode. Access denied.');
+    }
+  };
+
+  // Auto wallet login handler
+  const handleAutoWalletLogin = () => {
+    if (isConnected && userAddress && contractOwner && userAddress.toLowerCase() === (contractOwner as string).toLowerCase()) {
+      setIsAdmin(true);
+    }
+  };
+
+  const handleLogout = () => {
+    logoutAdmin();
+    setIsAdmin(false);
+    setEvents([]);
+  };
+
+  const handleSaveConfig = (addr: string) => {
+    try {
+      const formatted = getAddress(addr);
+      setContractAddress(formatted);
+      localStorage.setItem('velo_contract_address', formatted);
+      setIsContractAddressInvalid(false);
+      setShowConfig(false);
+    } catch {
+      setIsContractAddressInvalid(true);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -63,7 +146,6 @@ export default function MyEventsPage() {
     setIsSubmitting(true);
 
     try {
-      // Basic fallback image if none provided
       const finalImageUrl = formData.imageUrl.trim() || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=600';
       
       const newEvent = {
@@ -84,7 +166,6 @@ export default function MyEventsPage() {
       await createEvent(newEvent);
       await loadEvents();
 
-      // Reset Form & Close Modal
       setFormData({
         title: '',
         description: '',
@@ -111,191 +192,279 @@ export default function MyEventsPage() {
   const revenueEth = events.reduce((sum, e) => sum + (e.soldTickets * parseFloat(e.priceEth)), 0);
   const revenueLink = events.reduce((sum, e) => sum + (e.soldTickets * parseFloat(e.priceLink)), 0);
 
-  if (!isConnected) {
+  // Render Login Page for non-admins
+  if (!isAdmin) {
+    const isOwnerWalletConnected = 
+      isConnected && 
+      userAddress && 
+      contractOwner && 
+      userAddress.toLowerCase() === (contractOwner as string).toLowerCase();
+
     return (
-      <div className="flex-1 w-full max-w-4xl mx-auto px-4 py-16 flex flex-col items-center justify-center text-center gap-6">
-        <div className="p-4 rounded-3xl glass bg-zinc-900/10 border-white/5 animate-pulse">
-          <Calendar className="h-12 w-12 text-violet-400" />
+      <div className="flex-1 w-full max-w-md mx-auto px-6 py-24 flex flex-col justify-center gap-8 animate-in fade-in">
+        <div className="flex flex-col gap-2 text-left">
+          <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">LailTix. Administration</span>
+          <h1 className="text-3xl font-black tracking-tight text-white">Admin Portal</h1>
+          <p className="text-zinc-500 text-xs font-light">Enter passcode or connect the smart contract owner wallet to verify access privileges.</p>
         </div>
-        <h1 className="text-3xl font-extrabold text-white">Create & Manage Your Events</h1>
-        <p className="text-zinc-400 text-sm max-w-md leading-relaxed">
-          Please connect your Web3 wallet using the top-right button to create tickets, customize events, and track sales revenue on-chain.
-        </p>
+
+        {/* Auto login with wallet option */}
+        {isOwnerWalletConnected && (
+          <div className="p-4 rounded-xl border border-emerald-900/30 bg-emerald-950/10 flex flex-col gap-2">
+            <div className="flex items-start gap-2.5 text-xs text-emerald-500 font-light">
+              <ShieldCheck className="h-4.5 w-4.5 shrink-0 text-emerald-500 mt-0.5" />
+              <span>
+                <strong>Owner Wallet Detected</strong>: Your connected wallet is the smart contract deployer. You can bypass passcode login.
+              </span>
+            </div>
+            <button
+              onClick={handleAutoWalletLogin}
+              className="w-full mt-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white transition-all cursor-pointer"
+            >
+              Sign In with Owner Wallet
+            </button>
+          </div>
+        )}
+
+        {/* Passcode Login Form */}
+        <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5 text-left">
+            <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Passcode</label>
+            <div className="relative">
+              <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-transparent border border-zinc-900 rounded-xl text-sm text-white placeholder-zinc-700 focus:outline-none focus:border-zinc-700 transition-all"
+              />
+            </div>
+          </div>
+
+          {loginError && (
+            <div className="p-3 rounded-xl border border-red-900/30 bg-red-950/10 text-xs text-red-500 flex items-center gap-2 font-mono">
+              <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+              <span>{loginError}</span>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full py-3 rounded-xl border border-white bg-white text-black hover:bg-transparent hover:text-white text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer"
+          >
+            Authenticate Portal
+          </button>
+        </form>
       </div>
     );
   }
 
+  // Render Admin Dashboard for authenticated admin
   return (
-    <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16 flex flex-col gap-10 sm:gap-12 animate-in fade-in duration-300">
+    <div className="flex-1 w-full max-w-6xl mx-auto px-6 py-12 md:py-24 flex flex-col gap-12 animate-in fade-in duration-300">
       
-      {/* Header and Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Header and Controls */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-900 pb-6">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">My Organized Events</h1>
-          <p className="text-zinc-500 text-xs mt-1">Manage ticket availability and track live purchases</p>
+          <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest block">PORTAL GRANTED</span>
+          <h1 className="text-3xl font-black tracking-tight text-white">Admin Panel</h1>
+          <p className="text-zinc-500 text-xs mt-0.5">Configure address settings, create new ticket events, and view logs.</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-sm font-bold text-white shadow-lg shadow-violet-600/20 active:scale-95 transition-all cursor-pointer"
-        >
-          <Plus className="h-4 w-4" /> Create New Event
-        </button>
+        
+        <div className="flex gap-2 w-full sm:w-auto">
+          {/* Settings Override Trigger */}
+          <button 
+            onClick={() => setShowConfig(!showConfig)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-zinc-900 hover:border-zinc-700 text-zinc-400 hover:text-white text-xs transition-all cursor-pointer"
+          >
+            <Settings className="h-3.5 w-3.5" /> Contract Settings
+          </button>
+          
+          <button
+            onClick={handleLogout}
+            className="px-3 py-2 rounded-lg border border-red-900/30 bg-red-950/10 hover:bg-red-950/20 text-red-400 hover:text-red-300 text-xs font-semibold transition-all cursor-pointer"
+          >
+            Log Out Portal
+          </button>
+        </div>
       </div>
 
-      {/* Stats Panel */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Metric 1 */}
-        <div className="p-5 rounded-2xl glass bg-zinc-900/10 border-white/5 flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/10">
-            <Award className="h-6 w-6" />
+      {/* Settings Panel Modal */}
+      {showConfig && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="w-full max-w-md p-6 rounded-2xl border border-zinc-900 bg-zinc-950 flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-white text-sm uppercase tracking-wider">TicketNFT Configuration</h3>
+              <button onClick={() => setShowConfig(false)} className="text-zinc-500 hover:text-white">
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] text-zinc-500 font-semibold uppercase">Active NFT Contract Address (Sepolia)</label>
+              <input
+                type="text"
+                placeholder={DEFAULT_CONTRACT_ADDRESS}
+                value={contractAddress}
+                onChange={(e) => {
+                  setContractAddress(e.target.value);
+                  setIsContractAddressInvalid(false);
+                }}
+                className={`w-full px-3 py-2 bg-transparent border rounded-lg text-xs text-white focus:outline-none font-mono ${
+                  isContractAddressInvalid
+                    ? 'border-red-900'
+                    : 'border-zinc-900 focus:border-zinc-700'
+                }`}
+              />
+              {isContractAddressInvalid && (
+                <span className="text-[9px] text-red-500 font-mono">Invalid hex address. Must match checksum format.</span>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 mt-2">
+              <button 
+                onClick={() => setContractAddress(DEFAULT_CONTRACT_ADDRESS)}
+                className="px-3 py-1.5 rounded-md text-[10px] font-semibold text-zinc-500 hover:text-white transition-colors"
+              >
+                Reset Default
+              </button>
+              <button 
+                onClick={() => handleSaveConfig(contractAddress)}
+                className="px-3 py-1.5 rounded-md bg-white hover:bg-zinc-200 text-black text-[10px] font-bold transition-all cursor-pointer"
+              >
+                Save Address
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Summary Dashboard */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="p-5 rounded-2xl border border-zinc-900 flex items-center gap-4">
+          <div className="p-3 rounded-lg border border-zinc-900 text-zinc-400">
+            <Award className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[10px] font-semibold text-zinc-500 block uppercase tracking-wider">Events Created</span>
-            <span className="text-2xl font-extrabold text-white font-mono">{totalCreated}</span>
+            <span className="text-[9px] font-bold text-zinc-500 block uppercase tracking-wider">Events Hosted</span>
+            <span className="text-xl font-extrabold text-white font-mono">{totalCreated}</span>
           </div>
         </div>
 
-        {/* Metric 2 */}
-        <div className="p-5 rounded-2xl glass bg-zinc-900/10 border-white/5 flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/10">
-            <Users className="h-6 w-6" />
+        <div className="p-5 rounded-2xl border border-zinc-900 flex items-center gap-4">
+          <div className="p-3 rounded-lg border border-zinc-900 text-zinc-400">
+            <Users className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[10px] font-semibold text-zinc-500 block uppercase tracking-wider">Total Tickets Sold</span>
-            <span className="text-2xl font-extrabold text-white font-mono">{totalSold}</span>
+            <span className="text-[9px] font-bold text-zinc-500 block uppercase tracking-wider">Total Passes Sold</span>
+            <span className="text-xl font-extrabold text-white font-mono">{totalSold}</span>
           </div>
         </div>
 
-        {/* Metric 3 */}
-        <div className="p-5 rounded-2xl glass bg-zinc-900/10 border-white/5 flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/10">
-            <DollarSign className="h-6 w-6" />
+        <div className="p-5 rounded-2xl border border-zinc-900 flex items-center gap-4">
+          <div className="p-3 rounded-lg border border-zinc-900 text-zinc-400">
+            <DollarSign className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[10px] font-semibold text-zinc-500 block uppercase tracking-wider">Total Est. Revenue</span>
-            <span className="text-base font-bold text-white font-mono block leading-tight">
-              {revenueEth.toFixed(4)} ETH
-            </span>
-            <span className="text-xs text-zinc-400 font-mono">
-              {revenueLink.toFixed(2)} LINK
-            </span>
+            <span className="text-[9px] font-bold text-zinc-500 block uppercase tracking-wider">Total Sales (ETH)</span>
+            <span className="text-xl font-extrabold text-white font-mono leading-none block">{revenueEth.toFixed(3)} ETH</span>
+            <span className="text-[10px] text-zinc-500 font-mono mt-0.5 block">{revenueLink.toFixed(1)} LINK</span>
           </div>
         </div>
       </section>
 
-      {/* Events List */}
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Loader2 className="h-8 w-8 text-violet-400 animate-spin" />
-          <span className="text-zinc-500 text-xs font-mono">Loading events list...</span>
-        </div>
-      ) : events.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => {
-            const progress = event.totalTickets > 0 ? (event.soldTickets / event.totalTickets) * 100 : 0;
-            return (
-              <div 
-                key={event.id}
-                className="group flex flex-col rounded-3xl glass bg-zinc-900/10 border-white/5 hover:glass-hover transition-all duration-300 overflow-hidden"
-              >
-                <div className="relative aspect-video w-full overflow-hidden">
-                  <img
-                    src={event.imageUrl}
-                    alt={event.title}
-                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <span className="absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase bg-black/60 backdrop-blur-md text-violet-300 border border-violet-500/20">
-                    {event.category}
-                  </span>
-                </div>
-
-                <div className="p-5 flex-1 flex flex-col justify-between gap-5">
-                  <div className="flex flex-col gap-2">
-                    <h3 className="text-lg font-bold text-white group-hover:text-violet-400 transition-colors line-clamp-1">
-                      {event.title}
-                    </h3>
-                    <p className="text-zinc-400 text-xs leading-relaxed line-clamp-2">
-                      {event.description}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2 text-zinc-400 text-xs">
-                      <Calendar className="h-4 w-4 text-violet-400/80" />
-                      <span>{event.date} • {event.time}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-zinc-400 text-xs">
-                      <MapPin className="h-4 w-4 text-violet-400/80" />
-                      <span className="line-clamp-1">{event.venue}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between text-[10px] font-semibold text-zinc-500">
-                      <span>{event.soldTickets} / {event.totalTickets} Sold</span>
-                      <span>{Math.round(progress)}%</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-medium text-zinc-500">PRICE TIERS</span>
-                      <span className="text-xs font-bold text-violet-300 font-mono">
-                        {event.priceEth} ETH / {event.priceLink} LINK
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/10">
-                      Live
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-16 px-4 rounded-3xl glass bg-zinc-900/5 border-white/5 flex flex-col items-center gap-3">
-          <Calendar className="h-8 w-8 text-zinc-600" />
-          <p className="text-zinc-400 text-sm">You haven't created any events yet.</p>
+      {/* Active Listing Section */}
+      <section className="flex flex-col gap-6">
+        <div className="flex justify-between items-center border-b border-zinc-900 pb-3">
+          <h2 className="text-lg font-bold text-white">Active Event Listings</h2>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="mt-2 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl glass hover:glass-hover text-xs font-bold text-violet-400 hover:text-white transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white hover:bg-white hover:text-black text-xs font-semibold text-white transition-all cursor-pointer"
           >
-            Create Event Now <Compass className="h-3.5 w-3.5 animate-spin" />
+            <Plus className="h-3.5 w-3.5" /> List New Event
           </button>
         </div>
-      )}
+
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <RefreshCw className="h-5 w-5 text-zinc-600 animate-spin" />
+            <span className="text-zinc-500 text-[10px] font-mono">Syncing listings...</span>
+          </div>
+        ) : events.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {events.map((event) => {
+              const progress = event.totalTickets > 0 ? (event.soldTickets / event.totalTickets) * 100 : 0;
+              return (
+                <div 
+                  key={event.id}
+                  className="group flex flex-col gap-4 border border-zinc-900 rounded-2xl p-4"
+                >
+                  <div className="aspect-video w-full overflow-hidden rounded-lg bg-zinc-900 relative">
+                    <img src={event.imageUrl} alt={event.title} className="object-cover w-full h-full grayscale" />
+                    <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[9px] font-medium uppercase tracking-wider bg-black/80 text-zinc-400">
+                      {event.category}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <h3 className="text-sm font-bold text-white truncate">{event.title}</h3>
+                    <p className="text-zinc-500 text-[11px] font-light truncate">{event.description}</p>
+                  </div>
+
+                  <div className="flex flex-col gap-1 text-[10px] text-zinc-500 font-mono">
+                    <span>Date: {event.date}</span>
+                    <span>Venue: {event.venue}</span>
+                  </div>
+
+                  <div className="w-full h-[2px] bg-zinc-900 rounded-full overflow-hidden mt-1">
+                    <div className="h-full bg-white" style={{ width: `${progress}%` }} />
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] text-zinc-500 font-mono">
+                    <span>{event.soldTickets} / {event.totalTickets} Sold</span>
+                    <span>{Math.round(progress)}%</span>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-3 border-t border-zinc-900 mt-2 text-[11px]">
+                    <span className="font-mono text-zinc-400">{event.priceEth} ETH / {event.priceLink} LINK</span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/10 text-[9px] font-bold uppercase tracking-wider">Active</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-16 border border-dashed border-zinc-900 rounded-2xl flex flex-col items-center gap-3">
+            <p className="text-zinc-600 text-xs font-light">No hosted listings found.</p>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="text-[10px] font-bold text-zinc-400 hover:text-white underline cursor-pointer"
+            >
+              List your first event pass
+            </button>
+          </div>
+        )}
+      </section>
 
       {/* Create Event Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto">
-          <div className="w-full max-w-xl p-6 rounded-3xl glass bg-zinc-950/95 border-white/10 flex flex-col gap-6 relative my-8 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
+          <div className="w-full max-w-lg p-6 rounded-2xl border border-zinc-900 bg-zinc-950 flex flex-col gap-6 relative my-8 animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setShowCreateModal(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+              className="absolute top-4 right-4 text-zinc-500 hover:text-white p-1 rounded-lg transition-colors"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4.5 w-4.5" />
             </button>
 
-            {/* Modal Header */}
             <div>
-              <span className="text-[10px] font-bold text-violet-400 uppercase tracking-widest block">ORGANIZER HUB</span>
-              <h3 className="text-xl font-bold text-white leading-tight">Create Tickets & Event</h3>
+              <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest block">ADMIN CONTRACT MINT</span>
+              <h3 className="text-lg font-bold text-white">Create New Event Ticket</h3>
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {/* Form Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                
-                {/* Title */}
-                <div className="flex flex-col gap-1.5 sm:col-span-2">
-                  <label className="text-xs text-zinc-400 font-semibold uppercase">Event Title</label>
+                <div className="flex flex-col gap-1 sm:col-span-2">
+                  <label className="text-[10px] text-zinc-500 font-semibold uppercase">Event Title</label>
                   <input
                     type="text"
                     name="title"
@@ -303,27 +472,25 @@ export default function MyEventsPage() {
                     value={formData.title}
                     onChange={handleInputChange}
                     placeholder="EtherSummit 2026"
-                    className="w-full px-3.5 py-2.5 bg-zinc-900/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all"
+                    className="w-full px-3 py-2 bg-transparent border border-zinc-900 rounded-lg text-xs text-white focus:outline-none focus:border-zinc-700"
                   />
                 </div>
 
-                {/* Description */}
-                <div className="flex flex-col gap-1.5 sm:col-span-2">
-                  <label className="text-xs text-zinc-400 font-semibold uppercase">Description</label>
+                <div className="flex flex-col gap-1 sm:col-span-2">
+                  <label className="text-[10px] text-zinc-500 font-semibold uppercase">Description</label>
                   <textarea
                     name="description"
                     required
-                    rows={3}
+                    rows={2}
                     value={formData.description}
                     onChange={handleInputChange}
-                    placeholder="Provide description of event, speakers, schedule..."
-                    className="w-full px-3.5 py-2.5 bg-zinc-900/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all resize-none"
+                    placeholder="Provide overview of event..."
+                    className="w-full px-3 py-2 bg-transparent border border-zinc-900 rounded-lg text-xs text-white focus:outline-none focus:border-zinc-700 resize-none"
                   />
                 </div>
 
-                {/* Date */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-zinc-400 font-semibold uppercase">Date</label>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-zinc-500 font-semibold uppercase">Date</label>
                   <input
                     type="text"
                     name="date"
@@ -331,13 +498,12 @@ export default function MyEventsPage() {
                     value={formData.date}
                     onChange={handleInputChange}
                     placeholder="Oct 12, 2026"
-                    className="w-full px-3.5 py-2.5 bg-zinc-900/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all"
+                    className="w-full px-3.5 py-2 bg-transparent border border-zinc-900 rounded-lg text-xs text-white focus:outline-none"
                   />
                 </div>
 
-                {/* Time */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-zinc-400 font-semibold uppercase">Time</label>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-zinc-500 font-semibold uppercase">Time</label>
                   <input
                     type="text"
                     name="time"
@@ -345,42 +511,39 @@ export default function MyEventsPage() {
                     value={formData.time}
                     onChange={handleInputChange}
                     placeholder="09:00 AM UTC"
-                    className="w-full px-3.5 py-2.5 bg-zinc-900/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all"
+                    className="w-full px-3.5 py-2 bg-transparent border border-zinc-900 rounded-lg text-xs text-white focus:outline-none"
                   />
                 </div>
 
-                {/* Venue */}
-                <div className="flex flex-col gap-1.5 sm:col-span-2">
-                  <label className="text-xs text-zinc-400 font-semibold uppercase">Venue</label>
+                <div className="flex flex-col gap-1 sm:col-span-2">
+                  <label className="text-[10px] text-zinc-500 font-semibold uppercase">Venue</label>
                   <input
                     type="text"
                     name="venue"
                     required
                     value={formData.venue}
                     onChange={handleInputChange}
-                    placeholder="Metropolis Center, Denver & On-Chain"
-                    className="w-full px-3.5 py-2.5 bg-zinc-900/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all"
+                    placeholder="Denver Convention Center"
+                    className="w-full px-3.5 py-2 bg-transparent border border-zinc-900 rounded-lg text-xs text-white focus:outline-none"
                   />
                 </div>
 
-                {/* Category */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-zinc-400 font-semibold uppercase">Category</label>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-zinc-500 font-semibold uppercase">Category</label>
                   <select
                     name="category"
                     value={formData.category}
                     onChange={handleInputChange}
-                    className="w-full px-3.5 py-2.5 bg-zinc-900 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all"
+                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-900 rounded-lg text-xs text-white focus:outline-none"
                   >
                     {categories.map((c) => (
-                      <option key={c} value={c} className="bg-zinc-950">{c}</option>
+                      <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
                 </div>
 
-                {/* Total Tickets (Supply) */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-zinc-400 font-semibold uppercase">Ticket Supply</label>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-zinc-500 font-semibold uppercase">Total Passes Supply</label>
                   <input
                     type="number"
                     name="totalTickets"
@@ -388,70 +551,66 @@ export default function MyEventsPage() {
                     min={1}
                     value={formData.totalTickets}
                     onChange={handleInputChange}
-                    className="w-full px-3.5 py-2.5 bg-zinc-900/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all"
+                    className="w-full px-3 py-2 bg-transparent border border-zinc-900 rounded-lg text-xs text-white focus:outline-none"
                   />
                 </div>
 
-                {/* Price ETH */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-zinc-400 font-semibold uppercase">Price (ETH)</label>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-zinc-500 font-semibold uppercase">Price (ETH)</label>
                   <input
                     type="text"
                     name="priceEth"
                     required
                     value={formData.priceEth}
                     onChange={handleInputChange}
-                    className="w-full px-3.5 py-2.5 bg-zinc-900/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all font-mono"
+                    className="w-full px-3 py-2 bg-transparent border border-zinc-900 rounded-lg text-xs text-white focus:outline-none font-mono"
                   />
                 </div>
 
-                {/* Price LINK */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs text-zinc-400 font-semibold uppercase">Price (LINK)</label>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-zinc-500 font-semibold uppercase">Price (LINK)</label>
                   <input
                     type="text"
                     name="priceLink"
                     required
                     value={formData.priceLink}
                     onChange={handleInputChange}
-                    className="w-full px-3.5 py-2.5 bg-zinc-900/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all font-mono"
+                    className="w-full px-3 py-2 bg-transparent border border-zinc-900 rounded-lg text-xs text-white focus:outline-none font-mono"
                   />
                 </div>
 
-                {/* Image URL */}
-                <div className="flex flex-col gap-1.5 sm:col-span-2">
-                  <label className="text-xs text-zinc-400 font-semibold uppercase">Image URL (Optional)</label>
+                <div className="flex flex-col gap-1 sm:col-span-2">
+                  <label className="text-[10px] text-zinc-500 font-semibold uppercase">Image URL (Optional)</label>
                   <input
                     type="url"
                     name="imageUrl"
                     value={formData.imageUrl}
                     onChange={handleInputChange}
                     placeholder="https://images.unsplash.com/photo-..."
-                    className="w-full px-3.5 py-2.5 bg-zinc-900/40 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-violet-500/50 transition-all"
+                    className="w-full px-3.5 py-2 bg-transparent border border-zinc-900 rounded-lg text-xs text-white focus:outline-none"
                   />
                 </div>
               </div>
 
-              {/* Submit Section */}
-              <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-white/5">
+              <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-zinc-900">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-5 py-2.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white transition-colors"
+                  className="px-4 py-2 rounded-lg text-xs font-semibold text-zinc-500 hover:text-white transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:bg-violet-800 disabled:text-zinc-400 text-xs font-bold text-white shadow-lg transition-all active:scale-95 cursor-pointer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-600 text-xs font-bold text-black transition-all cursor-pointer"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating...
+                      <Loader2 className="h-3 w-3 animate-spin" /> Publishing...
                     </>
                   ) : (
-                    'Publish Event'
+                    'Publish Event Pass'
                   )}
                 </button>
               </div>
