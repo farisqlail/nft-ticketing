@@ -1,22 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Plus, X, Award, Users, DollarSign, Loader2, Compass, AlertCircle, ShieldCheck, Key, Settings, RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Calendar, MapPin, Plus, X, Award, Users, DollarSign, Loader2, Compass, AlertCircle, ShieldAlert, ArrowRight, ShieldCheck, Settings, RefreshCw } from 'lucide-react';
 import { useAccount, useReadContract } from 'wagmi';
 import { getAddress } from 'viem';
 import { TICKET_NFT_ABI } from '@/lib/abi';
 import { getEventsByOrganizer, createEvent, type EventItem } from '@/lib/events';
-import { loginWithPasscode, logoutAdmin, isAddressAdmin } from '@/lib/auth';
+import { logoutAdmin, isAddressAdmin } from '@/lib/auth';
 
 const DEFAULT_CONTRACT_ADDRESS = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
   const { address: userAddress, isConnected } = useAccount();
   
   // Auth state
   const [isAdmin, setIsAdmin] = useState(false);
-  const [passcode, setPasscode] = useState('');
-  const [loginError, setLoginError] = useState<string | null>(null);
   
   // Contract configuration state
   const [contractAddress, setContractAddress] = useState(DEFAULT_CONTRACT_ADDRESS);
@@ -93,26 +93,7 @@ export default function AdminDashboardPage() {
     }
   }, [isAdmin, userAddress]);
 
-  // Login handler
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError(null);
-    
-    const success = loginWithPasscode(passcode);
-    if (success) {
-      setIsAdmin(true);
-      setPasscode('');
-    } else {
-      setLoginError('Invalid passcode. Access denied.');
-    }
-  };
 
-  // Auto wallet login handler
-  const handleAutoWalletLogin = () => {
-    if (isConnected && userAddress && contractOwner && userAddress.toLowerCase() === (contractOwner as string).toLowerCase()) {
-      setIsAdmin(true);
-    }
-  };
 
   const handleLogout = () => {
     logoutAdmin();
@@ -192,71 +173,23 @@ export default function AdminDashboardPage() {
   const revenueEth = events.reduce((sum, e) => sum + (e.soldTickets * parseFloat(e.priceEth)), 0);
   const revenueLink = events.reduce((sum, e) => sum + (e.soldTickets * parseFloat(e.priceLink)), 0);
 
-  // Render Login Page for non-admins
+  // Render Access Denied for non-admins
   if (!isAdmin) {
-    const isOwnerWalletConnected = 
-      isConnected && 
-      userAddress && 
-      contractOwner && 
-      userAddress.toLowerCase() === (contractOwner as string).toLowerCase();
-
     return (
-      <div className="flex-1 w-full max-w-md mx-auto px-6 py-24 flex flex-col justify-center gap-8 animate-in fade-in">
-        <div className="flex flex-col gap-2 text-left">
-          <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">LailTix. Administration</span>
-          <h1 className="text-3xl font-black tracking-tight text-white">Admin Portal</h1>
-          <p className="text-zinc-500 text-xs font-light">Enter passcode or connect the smart contract owner wallet to verify access privileges.</p>
+      <div className="flex-1 w-full max-w-md mx-auto px-6 py-24 flex flex-col justify-center items-center text-center gap-6 animate-in fade-in">
+        <div className="p-4 rounded-3xl glass bg-red-950/10 border-red-500/10 animate-pulse text-red-400">
+          <ShieldAlert className="h-12 w-12" />
         </div>
-
-        {/* Auto login with wallet option */}
-        {isOwnerWalletConnected && (
-          <div className="p-4 rounded-xl border border-emerald-900/30 bg-emerald-950/10 flex flex-col gap-2">
-            <div className="flex items-start gap-2.5 text-xs text-emerald-500 font-light">
-              <ShieldCheck className="h-4.5 w-4.5 shrink-0 text-emerald-500 mt-0.5" />
-              <span>
-                <strong>Owner Wallet Detected</strong>: Your connected wallet is the smart contract deployer. You can bypass passcode login.
-              </span>
-            </div>
-            <button
-              onClick={handleAutoWalletLogin}
-              className="w-full mt-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white transition-all cursor-pointer"
-            >
-              Sign In with Owner Wallet
-            </button>
-          </div>
-        )}
-
-        {/* Passcode Login Form */}
-        <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5 text-left">
-            <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Passcode</label>
-            <div className="relative">
-              <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600" />
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-transparent border border-zinc-900 rounded-xl text-sm text-white placeholder-zinc-700 focus:outline-none focus:border-zinc-700 transition-all"
-              />
-            </div>
-          </div>
-
-          {loginError && (
-            <div className="p-3 rounded-xl border border-red-900/30 bg-red-950/10 text-xs text-red-500 flex items-center gap-2 font-mono">
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
-              <span>{loginError}</span>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className="w-full py-3 rounded-xl border border-white bg-white text-black hover:bg-transparent hover:text-white text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer"
-          >
-            Authenticate Portal
-          </button>
-        </form>
+        <h1 className="text-3xl font-extrabold text-white">Access Denied</h1>
+        <p className="text-zinc-400 text-sm max-w-sm leading-relaxed">
+          Admin privileges required. Please navigate to the dedicated login page to authorize.
+        </p>
+        <button
+          onClick={() => router.push('/admin')}
+          className="px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-xs font-bold text-white shadow-lg shadow-violet-600/15 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+        >
+          Go to Admin Login <ArrowRight className="h-4 w-4" />
+        </button>
       </div>
     );
   }

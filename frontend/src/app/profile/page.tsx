@@ -5,8 +5,7 @@ import { useAccount, useBalance, useReadContract } from 'wagmi';
 import { getAddress, formatUnits } from 'viem';
 import { User, Mail, Shield, Check, Copy, RefreshCw, Ticket, Calendar, Wallet } from 'lucide-react';
 import { getEventsByOrganizer, getEvents } from '@/lib/events';
-import { ERC20_ABI, TICKET_NFT_ABI } from '@/lib/abi';
-import { loginWithPasscode, logoutAdmin, isAddressAdmin } from '@/lib/auth';
+import { ERC20_ABI } from '@/lib/abi';
 
 const DEFAULT_CONTRACT_ADDRESS = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
 const LINK_TOKEN_ADDRESS = '0x779877A7B0D9E8603169DdbD7836e478b4624789';
@@ -27,29 +26,7 @@ export default function ProfilePage() {
   const [copied, setCopied] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
 
-  // Admin settings states
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [adminPasscode, setAdminPasscode] = useState('');
-  const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
-  const [contractAddress, setContractAddress] = useState(DEFAULT_CONTRACT_ADDRESS);
 
-  // Fetch contract owner
-  const { data: contractOwner } = useReadContract({
-    address: contractAddress as `0x${string}`,
-    abi: TICKET_NFT_ABI,
-    functionName: 'owner',
-  });
-
-  const checkAdminAuthStatus = () => {
-    const isOwner = isAddressAdmin(userAddress, contractOwner as string);
-    setIsAdmin(isOwner);
-  };
-
-  useEffect(() => {
-    checkAdminAuthStatus();
-    const interval = setInterval(checkAdminAuthStatus, 1500);
-    return () => clearInterval(interval);
-  }, [userAddress, contractOwner]);
 
   // Profile Form State
   const [profile, setProfile] = useState({
@@ -405,74 +382,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Admin Authentication Hub Card */}
-          <div className="p-5 rounded-3xl glass bg-zinc-950/40 border-white/5 flex flex-col gap-4">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-zinc-400 tracking-wider uppercase">Admin Hub</span>
-              <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${
-                isAdmin 
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/10'
-                  : 'bg-zinc-900 text-zinc-500'
-              }`}>
-                {isAdmin ? 'Admin Granted' : 'Standard User'}
-              </span>
-            </div>
 
-            {isAdmin ? (
-              <div className="flex flex-col gap-3 text-left">
-                <p className="text-xs text-zinc-400 font-light">
-                  You are logged in as an administrator. You can configure contracts and add new listings in the Admin Panel.
-                </p>
-                <button
-                  onClick={() => {
-                    logoutAdmin();
-                    setIsAdmin(false);
-                  }}
-                  className="w-full py-2 rounded-xl bg-red-950/30 border border-red-900/20 hover:bg-red-950/50 text-xs font-semibold text-red-400 transition-all cursor-pointer"
-                >
-                  Log Out Admin
-                </button>
-              </div>
-            ) : (
-              <form 
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setAdminLoginError(null);
-                  const success = loginWithPasscode(adminPasscode);
-                  if (success) {
-                    setIsAdmin(true);
-                    setAdminPasscode('');
-                  } else {
-                    setAdminLoginError('Incorrect passcode.');
-                  }
-                }}
-                className="flex flex-col gap-3 text-left"
-              >
-                <p className="text-[11px] text-zinc-500 font-light leading-snug">
-                  Unlock the dashboard event list controls by entering LailTix admin passcode.
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  <input
-                    type="password"
-                    required
-                    placeholder="Enter passcode"
-                    value={adminPasscode}
-                    onChange={(e) => setAdminPasscode(e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-900/60 border border-white/5 rounded-xl text-xs text-white focus:outline-none focus:border-violet-500/30 transition-all"
-                  />
-                </div>
-                {adminLoginError && (
-                  <span className="text-[10px] text-red-500 font-mono">{adminLoginError}</span>
-                )}
-                <button
-                  type="submit"
-                  className="w-full py-2 rounded-xl border border-white bg-white text-black hover:bg-transparent hover:text-white text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer"
-                >
-                  Authorize Admin
-                </button>
-              </form>
-            )}
-          </div>
         </section>
 
       </div>
