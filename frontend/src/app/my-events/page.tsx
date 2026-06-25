@@ -6,7 +6,7 @@ import { Calendar, MapPin, Plus, X, Award, Users, DollarSign, Loader2, Compass, 
 import { useAccount, useReadContract } from 'wagmi';
 import { getAddress } from 'viem';
 import { TICKET_NFT_ABI } from '@/lib/abi';
-import { getEventsByOrganizer, createEvent, type EventItem } from '@/lib/events';
+import { getEventsByOrganizer, getEvents, createEvent, type EventItem } from '@/lib/events';
 import { logoutAdmin, isAddressAdmin } from '@/lib/auth';
 
 const DEFAULT_CONTRACT_ADDRESS = '0x71C7656EC7ab88b098defB751B7401B5f6d8976F';
@@ -77,7 +77,19 @@ export default function AdminDashboardPage() {
     setIsLoading(true);
     try {
       const orgEvents = await getEventsByOrganizer(userAddress);
-      setEvents(orgEvents);
+      
+      // Also fetch default static mock events which don't have an organizer
+      const allEvents = await getEvents();
+      const mockEvents = allEvents.filter((e) => !e.organizer);
+      
+      const combined = [...orgEvents];
+      mockEvents.forEach((me) => {
+        if (!combined.some((e) => e.id === me.id)) {
+          combined.push(me);
+        }
+      });
+      
+      setEvents(combined);
     } catch (e) {
       console.error(e);
     } finally {
