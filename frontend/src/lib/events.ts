@@ -26,7 +26,7 @@ export const MOCK_EVENTS: EventItem[] = [
     venue: 'Metropolis Center, Denver & On-Chain',
     priceEth: '0.001',
     priceLink: '5',
-    imageUrl: 'https://images.unsplash.com/photo-1591115411999-65984aa2687d?auto=format&fit=crop&q=80&w=600',
+    imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=600',
     category: 'Conference',
     totalTickets: 1000,
     soldTickets: 780,
